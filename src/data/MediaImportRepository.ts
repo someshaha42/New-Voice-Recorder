@@ -160,6 +160,28 @@ export async function renderAndExportProcessedWav(
 }
 
 export function triggerBlobDownload(blob: Blob, fileName: string): void {
+  const nativeBridge = (
+    window as unknown as {
+      VoxForgeNative?: {
+        saveBase64File?: (base64Data: string, fileName: string, mimeType: string) => boolean;
+      };
+    }
+  ).VoxForgeNative;
+
+  if (nativeBridge?.saveBase64File) {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+      const commaIdx = dataUrl.indexOf(',');
+      const b64 = commaIdx >= 0 ? dataUrl.slice(commaIdx + 1) : '';
+      if (b64) {
+        nativeBridge.saveBase64File?.(b64, fileName, blob.type || 'audio/wav');
+      }
+    };
+    reader.readAsDataURL(blob);
+    return;
+  }
+
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
